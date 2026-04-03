@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Margin Model</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #0d0f14;
+  --surface: #13161e;
+  --surface2: #1a1e29;
+  --border: #252a38;
+  --border2: #2e3547;
+  --text: #e8eaf0;
+  --muted: #6b7280;
+  --accent: #4f8ef7;
+  --accent2: #7c3aed;
+  --green: #10b981;
+  --green-bg: rgba(16,185,129,0.12);
+  --amber: #f59e0b;
+  --amber-bg: rgba(245,158,11,0.12);
+  --red: #ef4444;
+  --red-bg: rgba(239,68,68,0.12);
+  --red-dim: #450a0a;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Syne', sans-serif;
+  --target: 32;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; }
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ── Header ── */
+.header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.logo-mark {
+  width: 32px; height: 32px; border-radius: 7px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; color: white; flex-shrink: 0;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.h-title { font-size: 15px; font-weight: 700; }
+.h-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 7px; font-family: var(--sans);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border2); transition: all 0.15s;
+}
+.btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+.btn-primary:hover { background: #3b7de0; }
+.btn-ghost { background: transparent; color: var(--muted); }
+.btn-ghost:hover { color: var(--text); border-color: var(--border2); background: var(--surface2); }
+.btn-lock { background: transparent; border-color: var(--border2); color: var(--muted); font-size: 14px; padding: 7px 10px; }
+.btn-lock:hover { color: var(--text); background: var(--surface2); }
+
+/* ── Layout ── */
+.main { display: flex; flex: 1; height: calc(100vh - 65px); overflow: hidden; }
+.left { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.right { width: 360px; min-width: 320px; background: var(--surface); border-left: 1px solid var(--border); overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+
+/* ── Cards ── */
+.card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.card-header { padding: 11px 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.card-body { padding: 15px; }
+
+/* ── Forms ── */
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; }
+input[type="text"], input[type="number"], input[type="password"], select {
+  background: var(--bg); border: 1px solid var(--border2); border-radius: 6px;
+  color: var(--text); font-family: var(--mono); font-size: 13px;
+  padding: 7px 10px; width: 100%; outline: none; transition: border-color 0.15s;
+}
+input:focus, select:focus { border-color: var(--accent); }
+select option { background: var(--surface2); }
+
+/* ── Metrics ── */
+.metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 13px; transition: border-color 0.3s; }
+.metric-card.on-target { border-color: var(--green); background: var(--green-bg); }
+.metric-card.warn { border-color: var(--amber); background: var(--amber-bg); }
+.metric-card.off-target { border-color: var(--red); background: var(--red-bg); }
+.metric-label { font-size: 9px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.metric-value { font-size: 22px; font-weight: 800; font-family: var(--mono); letter-spacing: -0.5px; line-height: 1; }
+.metric-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 3px; }
+
+/* ── Margin bar ── */
+.bar-wrap { margin-top: 12px; }
+.bar-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 5px; font-family: var(--mono); }
+.bar-bg { height: 7px; background: var(--border); border-radius: 99px; overflow: visible; position: relative; }
+.bar-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease, background 0.4s ease; }
+.bar-target-line {
+  position: absolute; top: -4px; bottom: -4px; width: 2px;
+  background: rgba(255,255,255,0.25); border-radius: 2px;
+  left: 64%; /* 32/50 = 64% */
+}
+.bar-target-label {
+  position: absolute; top: -18px; font-size: 9px; font-family: var(--mono);
+  color: var(--muted); left: 64%; transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* ── Target badge ── */
+.target-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 99px; font-size: 10px;
+  font-family: var(--mono); font-weight: 600;
+}
+.target-badge.on-target { background: var(--green-bg); color: var(--green); }
+.target-badge.warn { background: var(--amber-bg); color: var(--amber); }
+.target-badge.off-target { background: var(--red-bg); color: var(--red); }
+
+/* ── Table ── */
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead tr { background: var(--bg); }
+th { text-align: left; padding: 9px 10px; font-size: 9px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: rgba(79,142,247,0.03); }
+.td-p { padding: 7px 10px; }
+td input[type="text"], td input[type="number"], td select {
+  padding: 5px 7px; font-size: 12px; background: transparent;
+  border: 1px solid transparent; border-radius: 4px; width: 100%;
+}
+td input:hover, td input:focus, td select:hover, td select:focus {
+  background: var(--bg); border-color: var(--border2);
+}
+.nfi-cell { text-align: center; padding: 7px 10px; }
+input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+
+/* ── Badges ── */
+.badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 700; font-family: var(--mono); letter-spacing: 0.04em; white-space: nowrap; }
+.badge-na { background: rgba(79,142,247,0.14); color: var(--accent); }
+.badge-india { background: rgba(124,58,237,0.14); color: #a78bfa; }
+
+/* ── Row margin indicator ── */
+.row-margin-dot {
+  width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 4px; flex-shrink: 0;
+}
+
+/* ── Buttons ── */
+.del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 3px 7px; border-radius: 4px; transition: all 0.15s; line-height: 1; }
+.del-btn:hover { color: var(--red); background: rgba(239,68,68,0.1); }
+.add-row-btn { width: 100%; padding: 9px; background: transparent; border: 1px dashed var(--border2); border-radius: 7px; color: var(--muted); font-family: var(--sans); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.add-row-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.05); }
+
+/* ── Breakdown section ── */
+.breakdown-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .breakdown-grid { grid-template-columns: 1fr; } }
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; backdrop-filter: blur(4px);
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 14px; padding: 28px; width: 420px; max-width: 95vw;
+  transform: translateY(10px); transition: transform 0.2s;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; font-family: var(--mono); }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+.modal-section { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.modal-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.error-msg { color: var(--red); font-size: 11px; font-family: var(--mono); margin-top: 6px; display: none; }
+.success-msg { color: var(--green); font-size: 11px; font-family: var(--mono); margin-top: 6px; display: none; }
+
+/* ── Tab select modal ── */
+.tab-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+.tab-option {
+  padding: 10px 14px; border: 1px solid var(--border2); border-radius: 7px;
+  cursor: pointer; font-size: 13px; transition: all 0.15s; background: var(--bg);
+}
+.tab-option:hover { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.05); }
+.tab-option.selected { border-color: var(--accent); background: rgba(79,142,247,0.1); color: var(--accent); font-weight: 600; }
+
+/* ── Upload area ── */
+.upload-zone {
+  border: 2px dashed var(--border2); border-radius: 8px; padding: 20px;
+  text-align: center; cursor: pointer; transition: all 0.15s;
+  color: var(--muted); font-size: 12px;
+}
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.05); }
+.upload-zone input { display: none; }
+
+/* ── Notification banner ── */
+.notif {
+  padding: 10px 16px; border-radius: 8px; font-size: 12px;
+  font-family: var(--mono); display: flex; align-items: center; gap: 8px;
+  border: 1px solid; margin-bottom: 4px;
+}
+.notif.on-target { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+.notif.warn { background: var(--amber-bg); border-color: var(--amber); color: var(--amber); }
+.notif.off-target { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+.notif { display: none; }
+.notif.visible { display: flex; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+.mono { font-family: var(--mono); }
+/* ── Tab Nav ── */
+.tab-nav { display: flex; gap: 2px; padding: 0 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.tab-btn {
+  padding: 10px 18px; font-family: var(--sans); font-size: 12px; font-weight: 600;
+  color: var(--muted); background: none; border: none; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-pane { display: none; }
+.tab-pane.active { display: flex; flex: 1; height: calc(100vh - 105px); overflow: hidden; }
+
+/* ── Staffing resource name lookup ── */
+.name-found { color: var(--green); font-size: 9px; font-family: var(--mono); }
+.name-notfound { color: var(--amber); font-size: 9px; font-family: var(--mono); }
+
+.dim { color: var(--muted); }
+.section-divider { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-mark">M</div>
+      <div>
+        <div class="h-title">Margin Model</div>
+        <div class="h-sub">Opportunity & Staffing Estimator · Services &amp; Consulting</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-ghost" onclick="openUploadModal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Resource Plan
+      </button>
+      <button class="btn btn-lock" onclick="openAdminModal()" title="Admin / Rate Card">🔒</button>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted)" id="lastUpdated"></span>
+    </div>
+  </header>
+
+  <!-- ── Tab Navigation ── -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('opportunity')" id="tab-opportunity">Opportunity Estimator</button>
+    <button class="tab-btn" onclick="switchTab('staffing')" id="tab-staffing">Staffing Estimator</button>
+  </nav>
+
+  <!-- ── Tab 1: Opportunity Estimator ── -->
+  <div class="main tab-pane active" id="pane-opportunity">
+
+    <!-- ── LEFT: Summary, Role Breakdown, Cost Summary ── -->
+    <div class="left">
+
+      <!-- Summary -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Summary</span>
+          <span id="targetBadge" class="target-badge" style="display:none"></span>
+        </div>
+        <div class="card-body">
+          <div id="notifBanner" class="notif"></div>
+          <div class="metrics-grid" style="margin-top:4px">
+            <div class="metric-card">
+              <div class="metric-label">Revenue</div>
+              <div class="metric-value" id="mRevenue" style="color:var(--accent)">$0</div>
+              <div class="metric-sub" id="mHours">0 hrs</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Total Cost</div>
+              <div class="metric-value" id="mCost">$0</div>
+              <div class="metric-sub" id="mRoles">0 roles</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Gross Profit</div>
+              <div class="metric-value" id="mProfit">$0</div>
+              <div class="metric-sub" id="mProfitSub"></div>
+            </div>
+            <div class="metric-card" id="marginCard">
+              <div class="metric-label">Margin %</div>
+              <div class="metric-value" id="mMargin">—</div>
+              <div class="metric-sub" id="mMarginSub">Target: 32%</div>
+            </div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-labels"><span>0%</span><span id="barLabel">—</span><span>50%+</span></div>
+            <div class="bar-bg">
+              <div class="bar-target-label">32%</div>
+              <div class="bar-target-line"></div>
+              <div class="bar-fill" id="marginBar" style="width:0%;background:var(--muted)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Role Breakdown -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Role Breakdown</span></div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Role</th>
+                <th>Region</th>
+                <th>Hrs</th>
+                <th>Revenue</th>
+                <th>Cost</th>
+                <th>Margin</th>
+              </tr>
+            </thead>
+            <tbody id="breakdownBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Cost Summary -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Cost Summary</span></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:0">
+          <table>
+            <thead>
+              <tr>
+                <th>Component</th>
+                <th style="text-align:right">Amount</th>
+                <th style="text-align:right">% of Rev</th>
+              </tr>
+            </thead>
+            <tbody id="costSummaryBody"></tbody>
+          </table>
+          <div id="costSummaryTotals" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"></div>
+        </div>
+      </div>
+
+    </div><!-- /left -->
+
+    <!-- ── RIGHT: Opportunity Details, Americas/NFI Breakdown, Resource Plan ── -->
+    <div class="right">
+
+      <!-- Opportunity Details -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Opportunity Details</span></div>
+        <div class="card-body">
+          <div class="field">
+            <label>Opportunity Name</label>
+            <input type="text" id="oppName" value="" placeholder="Enter opportunity name">
+          </div>
+          <div class="field">
+            <label>Blended Bill Rate ($/hr)</label>
+            <input type="number" id="billRate" value="" min="0" step="1" oninput="recalc()" placeholder="e.g. 225">
+          </div>
+          <div class="field">
+            <label>Discount</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="discountValue" value="0" min="0" step="0.1" style="flex:1" oninput="recalc()">
+              <select id="discountType" onchange="recalc()" style="width:70px">
+                <option value="pct">%</option>
+                <option value="dollar">$</option>
+              </select>
+            </div>
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:3px" id="discountPreview"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Americas / NFI Breakdown -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Americas / NFI Breakdown</span></div>
+        <div class="card-body">
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-label">Americas Hrs</div>
+              <div class="metric-value" id="naHours" style="font-size:20px;color:var(--accent)">0</div>
+              <div class="metric-sub" id="naCost">$0 cost</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">NFI (India) Hrs</div>
+              <div class="metric-value" id="nfiHours" style="font-size:20px;color:#a78bfa">0</div>
+              <div class="metric-sub" id="nfiCost">$0 cost</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--muted)" id="nfiMix">NFI Mix: 0% · Americas Mix: 100%</div>
+        </div>
+      </div>
+
+      <!-- Resource Plan -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Resource Plan</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--muted)" id="rowCount">0 resources</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:150px">Role</th>
+                <th style="min-width:90px">Skill</th>
+                <th style="width:46px;text-align:center">NFI</th>
+                <th style="min-width:80px">Region</th>
+                <th style="min-width:80px">Hours</th>
+                <th style="min-width:95px">Revenue</th>
+                <th style="min-width:95px">Cost</th>
+                <th style="min-width:80px">Margin</th>
+                <th style="width:34px"></th>
+              </tr>
+            </thead>
+            <tbody id="resourceBody"></tbody>
+          </table>
+        </div>
+        <div style="padding:8px 14px 14px">
+          <button class="add-row-btn" onclick="addRow()">
+            <span style="font-size:16px;line-height:1">+</span> Add Resource
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /right -->
+  </div><!-- /pane-opportunity -->
+
+  <!-- ── Tab 2: Staffing Estimator ── -->
+  <div class="main tab-pane" id="pane-staffing">
+
+    <!-- LEFT: Summary, Role Breakdown, Cost Summary (Staffing) -->
+    <div class="left">
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Summary</span>
+          <span id="s-targetBadge" class="target-badge" style="display:none"></span>
+        </div>
+        <div class="card-body">
+          <div id="s-notifBanner" class="notif"></div>
+          <div class="metrics-grid" style="margin-top:4px">
+            <div class="metric-card">
+              <div class="metric-label">Revenue</div>
+              <div class="metric-value" id="s-mRevenue" style="color:var(--accent)">$0</div>
+              <div class="metric-sub" id="s-mHours">0 hrs</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Total Cost</div>
+              <div class="metric-value" id="s-mCost">$0</div>
+              <div class="metric-sub" id="s-mRoles">0 resources</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Gross Profit</div>
+              <div class="metric-value" id="s-mProfit">$0</div>
+              <div class="metric-sub" id="s-mProfitSub"></div>
+            </div>
+            <div class="metric-card" id="s-marginCard">
+              <div class="metric-label">Margin %</div>
+              <div class="metric-value" id="s-mMargin">—</div>
+              <div class="metric-sub" id="s-mMarginSub">Target: 32%</div>
+            </div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-labels"><span>0%</span><span id="s-barLabel">—</span><span>50%+</span></div>
+            <div class="bar-bg">
+              <div class="bar-target-label">32%</div>
+              <div class="bar-target-line"></div>
+              <div class="bar-fill" id="s-marginBar" style="width:0%;background:var(--muted)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Resource Breakdown</span></div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Resource</th><th>Role</th><th>Region</th>
+              <th>Hrs</th><th>Revenue</th><th>Cost</th><th>Margin</th>
+            </tr></thead>
+            <tbody id="s-breakdownBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Cost Summary</span></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:0">
+          <table>
+            <thead><tr>
+              <th>Component</th>
+              <th style="text-align:right">Amount</th>
+              <th style="text-align:right">% of Rev</th>
+            </tr></thead>
+            <tbody id="s-costSummaryBody"></tbody>
+          </table>
+          <div id="s-costSummaryTotals" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"></div>
+        </div>
+      </div>
+
+    </div><!-- /left -->
+
+    <!-- RIGHT: Opportunity Details, NFI Breakdown, Staffing Resource Plan -->
+    <div class="right">
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Opportunity Details</span></div>
+        <div class="card-body">
+          <div class="field">
+            <label>Opportunity Name</label>
+            <input type="text" id="s-oppName" value="" placeholder="Enter opportunity name">
+          </div>
+          <div class="field">
+            <label>Blended Bill Rate ($/hr)</label>
+            <input type="number" id="s-billRate" value="" min="0" step="1" oninput="sRecalc()" placeholder="e.g. 225">
+          </div>
+          <div class="field">
+            <label>Discount</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="s-discountValue" value="0" min="0" step="0.1" style="flex:1" oninput="sRecalc()">
+              <select id="s-discountType" onchange="sRecalc()" style="width:70px">
+                <option value="pct">%</option>
+                <option value="dollar">$</option>
+              </select>
+            </div>
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:3px" id="s-discountPreview"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Americas / NFI Breakdown</span></div>
+        <div class="card-body">
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-label">Americas Hrs</div>
+              <div class="metric-value" id="s-naHours" style="font-size:20px;color:var(--accent)">0</div>
+              <div class="metric-sub" id="s-naCost">$0 cost</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">NFI (India) Hrs</div>
+              <div class="metric-value" id="s-nfiHours" style="font-size:20px;color:#a78bfa">0</div>
+              <div class="metric-sub" id="s-nfiCost">$0 cost</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--muted)" id="s-nfiMix">NFI Mix: 0% · Americas Mix: 100%</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Staffing Resource Plan</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--muted)" id="s-rowCount">0 resources</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th style="min-width:140px">Resource</th>
+              <th style="min-width:130px">Role</th>
+              <th style="min-width:80px">Skill</th>
+              <th style="width:40px;text-align:center">NFI</th>
+              <th style="min-width:70px">Region</th>
+              <th style="min-width:65px">Hours</th>
+              <th style="min-width:85px">LCR/hr</th>
+              <th style="min-width:85px">Revenue</th>
+              <th style="min-width:80px">Cost</th>
+              <th style="min-width:75px">Margin</th>
+              <th style="width:30px"></th>
+            </tr></thead>
+            <tbody id="s-resourceBody"></tbody>
+          </table>
+        </div>
+        <div style="padding:8px 14px 14px">
+          <button class="add-row-btn" onclick="sAddRow()">
+            <span style="font-size:16px;line-height:1">+</span> Add Resource
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /right -->
+  </div><!-- /pane-staffing -->
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     ADMIN MODAL (password-protected)
+════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal">
+    <div class="modal-title">🔒 Admin Access</div>
+    <div class="modal-sub">Enter password to view rate card &amp; upload roster data</div>
+
+    <!-- Step 1: Password -->
+    <div id="adminAuthStep">
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="adminPassword" placeholder="Enter password" onkeydown="if(event.key==='Enter') checkAdminPassword()">
+      </div>
+      <div class="error-msg" id="adminError">Incorrect password. Try again.</div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeAdminModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="checkAdminPassword()">Unlock</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Admin Panel (shown after auth) -->
+    <div id="adminPanel" style="display:none">
+
+      <div class="modal-section">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:12px">Avg Cost Rate Reference (NA &amp; NFI)</div>
+        <div id="rateCardList" style="max-height:240px;overflow-y:auto"></div>
+      </div>
+
+      <div class="modal-section">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px">Upload New Roster</div>
+        <div class="upload-zone" id="rosterUploadZone" onclick="document.getElementById('rosterFileInput').click()"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="handleRosterDrop(event)">
+          <input type="file" id="rosterFileInput" accept=".xlsx" onchange="handleRosterUpload(this.files[0])">
+          <div style="font-size:22px;margin-bottom:6px">📊</div>
+          <div style="font-weight:600;color:var(--text);font-size:13px">Click or drag to upload roster .xlsx</div>
+          <div style="margin-top:4px;font-size:11px">Neuraflash Opportunity Pricings format</div>
+        </div>
+        <div class="success-msg" id="rosterSuccess">✓ Roster updated successfully</div>
+        <div class="error-msg" id="rosterError">Failed to parse roster. Check file format.</div>
+      </div>
+
+      <div class="modal-actions" style="justify-content:space-between">
+        <button class="btn btn-ghost" style="color:var(--red);font-size:11px" onclick="clearSavedRoster()">Clear saved roster</button>
+        <button class="btn btn-primary" onclick="closeAdminModal()">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     UPLOAD RESOURCE PLAN MODAL
+════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="uploadModal">
+  <div class="modal">
+    <div class="modal-title">Upload Resource Plan</div>
+    <div class="modal-sub">Select an Excel file (.xlsx) — you'll choose the tab if multiple sheets exist</div>
+
+    <div id="uploadStep1">
+      <div class="upload-zone" id="planUploadZone" onclick="document.getElementById('planFileInput').click()"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')"
+        ondrop="handlePlanDrop(event)">
+        <input type="file" id="planFileInput" accept=".xlsx" onchange="handlePlanFile(this.files[0])">
+        <div style="font-size:22px;margin-bottom:6px">📁</div>
+        <div style="font-weight:600;color:var(--text);font-size:13px">Click or drag to upload resource plan</div>
+        <div style="margin-top:4px;font-size:11px">.xlsx files only</div>
+      </div>
+      <div class="error-msg" id="planError">Could not read file. Make sure it's a valid .xlsx.</div>
+    </div>
+
+    <!-- Tab selection (shown if multiple relevant tabs) -->
+    <div id="uploadStep2" style="display:none">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-family:var(--mono)">
+        Multiple sheets found. Select the resource plan tab:
+      </div>
+      <div class="tab-list" id="tabList"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeUploadModal()">Cancel</button>
+        <button class="btn btn-primary" id="tabConfirmBtn" onclick="confirmTabSelection()" disabled>Use This Tab</button>
+      </div>
+    </div>
+
+    <div class="modal-actions" id="uploadStep1Actions">
+      <button class="btn btn-ghost" onclick="closeUploadModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════
+const ADMIN_PASSWORD = 'neuraflash2024';
+
+// Full roster for named-resource lookup (populated on roster upload)
+let ROSTER_BY_NAME = {}; // key: lowercase name, value: { name, role, skill, nfi, lcr }
+
+// Tab switching
+function switchTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'staffing') sRecalc();
+}
+
+// Base role rates (fallback when no skill match) — NA & India avg LCR USD/hr
+let COST_RATES = {
+  'Business Architect':       { na: 162.71, india: null   },
+  'Change Management':        { na: 157.89, india: null   },
+  'Consultant':               { na: 140.08, india: 33.19  }, // avg across all consultant skills
+  'Delivery Owner':           { na: 203.88, india: null   }, // avg General + Agentforce
+  'Designer':                 { na: 147.29, india: null   }, // avg across designer skills
+  'Developer':                { na: 123.15, india: 31.45  }, // avg across developer skills
+  'Engagement Manager':       { na: 203.88, india: null   }, // mirrors Delivery Owner
+  'Project Manager':          { na: 165.35, india: null   }, // avg General + Agentforce
+  'Quality Assurance':        { na: 160.69, india: 29.09  },
+  'Solution Architect':       { na: 181.51, india: 39.88  }, // avg across SA skills
+  'Support Engineer':         { na: 177.89, india: 22.22  },
+  'Technical Architect':      { na: 177.78, india: 42.57  }, // avg across TA skills
+  'Technical Delivery Owner': { na: 267.02, india: 69.06  },
+};
+
+// Role + Skill combo rates from March 2026 NF roster (cols U+V)
+// These take priority over role-only rates when skill matches
+let COMBO_RATES = {
+  'Consultant|Agentforce':              { na: null,   india: 35.53 },
+  'Consultant|Billing':                 { na: 124.19, india: null  },
+  'Consultant|CPQ':                     { na: 158.00, india: 24.82 },
+  'Consultant|Commerce Cloud':          { na: 174.32, india: null  },
+  'Consultant|Conversation Design':     { na: 145.50, india: null  },
+  'Consultant|Digital Engagement':      { na: 155.90, india: null  },
+  'Consultant|Digital Experience':      { na: 133.96, india: null  },
+  'Consultant|DocuSign CLM':            { na: 128.25, india: null  },
+  'Consultant|Experience Cloud':        { na: 159.13, india: null  },
+  'Consultant|Field Service':           { na: 153.38, india: 32.21 },
+  'Consultant|Ironclad CLM':            { na: 139.37, india: null  },
+  'Consultant|Marketing Cloud':         { na: 106.89, india: null  },
+  'Consultant|Sales Cloud':             { na: 141.54, india: null  },
+  'Consultant|Service Cloud':           { na: 145.49, india: 37.64 },
+  'Consultant|Service Cloud Voice':     { na: 114.42, india: 30.00 },
+  'Delivery Owner|Agentforce':          { na: 201.09, india: null  },
+  'Delivery Owner|General':             { na: 204.67, india: null  },
+  'Designer|Agentforce':                { na: 162.38, india: null  },
+  'Designer|Digital Experience':        { na: 166.15, india: null  },
+  'Designer|User Experience':           { na: 112.34, india: null  },
+  'Developer|AWS':                      { na: 120.27, india: 30.57 },
+  'Developer|Agentforce':               { na: 129.31, india: 29.61 },
+  'Developer|Front-End':                { na: 177.89, india: 14.00 },
+  'Developer|Marketing Cloud':          { na: 106.89, india: null  },
+  'Developer|MuleSoft':                 { na: 107.78, india: 36.10 },
+  'Developer|Salesforce':               { na: 146.04, india: 33.17 },
+  'Developer|Service Cloud':            { na: null,   india: 17.27 },
+  'Developer|Service Cloud Voice':      { na: null,   india: 35.78 },
+  'Project Manager|Agentforce':         { na: 185.93, india: null  },
+  'Project Manager|General':            { na: 164.77, india: null  },
+  'Quality Assurance|General':          { na: 160.69, india: 29.09 },
+  'Solution Architect|AWS':             { na: 173.63, india: 43.98 },
+  'Solution Architect|Agentforce':      { na: 169.33, india: 35.78 },
+  'Solution Architect|Billing':         { na: 220.75, india: null  },
+  'Solution Architect|CPQ':             { na: 179.35, india: null  },
+  'Solution Architect|Digital Engagement': { na: 171.45, india: null },
+  'Solution Architect|DocuSign CLM':    { na: 149.28, india: null  },
+  'Solution Architect|Field Service':   { na: 205.28, india: null  },
+  'Solution Architect|Sales Cloud':     { na: 182.53, india: null  },
+  'Solution Architect|Service Cloud':   { na: 179.97, india: null  },
+  'Solution Architect|Service Cloud Voice': { na: 167.30, india: null },
+  'Support Engineer|General':           { na: 177.89, india: 21.62 },
+  'Technical Architect|AWS':            { na: 192.61, india: 35.78 },
+  'Technical Architect|Agentforce':     { na: 147.28, india: 38.30 },
+  'Technical Architect|Data Architecture': { na: 154.19, india: null },
+  'Technical Architect|MuleSoft':       { na: 197.07, india: 38.20 },
+  'Technical Architect|Salesforce':     { na: 197.73, india: 58.01 },
+  'Technical Delivery Owner|Agentforce':{ na: 196.51, india: null  },
+  'Technical Delivery Owner|General':   { na: 267.02, india: 69.06 },
+};
+
+const ROLES = () => Object.keys(COST_RATES).sort();
+const TARGET_MARGIN = 32;
+
+function getDiscount() {
+  const val = parseFloat(document.getElementById('discountValue').value) || 0;
+  const type = document.getElementById('discountType').value;
+  return { val, type };
+}
+
+function calcDiscountAmt(grossRev) {
+  const { val, type } = getDiscount();
+  if (type === 'pct') return grossRev * Math.min(val, 100) / 100;
+  return Math.min(val, grossRev);
+}
+
+function getCostRate(role, nfi, skill) {
+  const region = nfi ? 'india' : 'na';
+
+  // 1. Try Role + Skill combo first (normalize skill to title case for key match)
+  if (skill) {
+    const skillNorm = skill.trim();
+    // Try exact combo key
+    const comboKey = `${role}|${skillNorm}`;
+    const combo = COMBO_RATES[comboKey];
+    if (combo) {
+      const rate = combo[region];
+      if (rate != null) return { rate, source: 'combo' };
+      // Combo exists but no rate for this region — fall through to role-only
+    }
+    // Try partial skill match (e.g. "Service Cloud Voice" still contains no combo, but "AWS" in skill)
+    const comboMatch = Object.keys(COMBO_RATES).find(k => {
+      const [r, s] = k.split('|');
+      return r === role && skillNorm.toLowerCase().includes(s.toLowerCase());
+    });
+    if (comboMatch) {
+      const rate = COMBO_RATES[comboMatch][region];
+      if (rate != null) return { rate, source: 'combo' };
+    }
+  }
+
+  // 2. Fallback to role-only rate
+  const r = COST_RATES[role];
+  if (!r) return null;
+  if (nfi && r.india != null) return { rate: r.india, source: 'role' };
+  if (nfi && r.india == null) return { rate: r.na, source: 'role' }; // fallback NA if no India
+  return { rate: r.na, source: 'role' };
+}
+
+// ══════════════════════════════════════════════════════
+// ROW STATE
+// ══════════════════════════════════════════════════════
+let rows = [], rowId = 0;
+const getBillRate = () => parseFloat(document.getElementById('billRate').value) || 0;
+const fmt = n => (n == null || isNaN(n)) ? '—' : '$' + Math.round(n).toLocaleString('en-US');
+const fmtPct = n => (n == null || isNaN(n) || !isFinite(n)) ? '—' : n.toFixed(1) + '%';
+
+function marginColor(pct) {
+  if (pct == null || !isFinite(pct)) return 'var(--muted)';
+  if (pct >= TARGET_MARGIN) return 'var(--green)';
+  if (pct >= TARGET_MARGIN * 0.80) return 'var(--amber)';
+  return 'var(--red)';
+}
+function marginClass(pct) {
+  if (pct == null || !isFinite(pct)) return '';
+  if (pct >= TARGET_MARGIN) return 'on-target';
+  if (pct >= TARGET_MARGIN * 0.80) return 'warn';
+  return 'off-target';
+}
+
+function addRow(role='', skill='', nfi=false, hours=0) {
+  rows.push({ id: rowId++, role, skill, nfi, hours });
+  renderTable();
+  recalc();
+}
+
+function removeRow(id) {
+  rows = rows.filter(r => r.id !== id);
+  renderTable();
+  recalc();
+}
+
+function updateRow(id, field, value) {
+  const r = rows.find(r => r.id === id);
+  if (!r) return;
+  if (field === 'hours') r.hours = parseFloat(value) || 0;
+  else if (field === 'nfi') { r.nfi = value; if (['avg','avg_notfound','avg_role','error'].includes(r.lcrStatus)) { const ar = getCostRate(r.role, r.nfi, r.skill); r.lcrStatus = ar ? (r.resourceName ? 'avg_notfound' : 'avg') : (getCostRate(r.role,r.nfi,'') ? (r.resourceName?'avg_notfound':'avg_role') : 'error'); } }
+  else if (field === 'role') { r.role = value; if (['avg','avg_notfound','avg_role','error'].includes(r.lcrStatus)) { const ar = getCostRate(r.role, r.nfi, r.skill); r.lcrStatus = ar ? (r.resourceName ? 'avg_notfound' : 'avg') : (getCostRate(r.role,r.nfi,'') ? (r.resourceName?'avg_notfound':'avg_role') : 'error'); } }
+  else if (field === 'skill') { r.skill = value; if (['avg','avg_notfound','avg_role','error'].includes(r.lcrStatus)) { const ar = getCostRate(r.role, r.nfi, r.skill); r.lcrStatus = ar ? (r.resourceName ? 'avg_notfound' : 'avg') : (getCostRate(r.role,r.nfi,'') ? (r.resourceName?'avg_notfound':'avg_role') : 'error'); } }
+  rerenderRowCalcs(id);
+  recalc();
+}
+
+function rerenderRowCalcs(id) {
+  const r = rows.find(r => r.id === id);
+  if (!r) return;
+  const region = r.nfi ? 'India' : 'Americas';
+  const costResult = getCostRate(r.role, r.nfi, r.skill);
+  const costRate = costResult ? costResult.rate : null;
+  const isCombo = costResult ? costResult.source === 'combo' : false;
+  const rev = r.hours * getBillRate();
+  const cost = costRate != null ? r.hours * costRate : null;
+  const margin = (cost != null && rev > 0) ? ((rev - cost) / rev) * 100 : null;
+
+  const set = (elId, html) => { const el = document.getElementById(elId); if (el) el.innerHTML = html; };
+  const regionCls = r.nfi ? 'badge-india' : 'badge-na';
+  set(`rg-${id}`, `<span class="badge ${regionCls}">${region}</span>`);
+  set(`rv-${id}`, `<span class="mono">${fmt(rev)}</span>`);
+  const comboTag = isCombo ? ` <span style="font-size:9px;color:var(--accent);font-family:var(--mono)">role+skill</span>` : '';
+  set(`co-${id}`, cost != null ? `<span class="mono">${fmt(cost)}</span>${comboTag}` : `<span class="dim">—</span>`);
+  const mc = marginColor(margin);
+  const dot = margin != null ? `<span class="row-margin-dot" style="background:${mc}"></span>` : '';
+  set(`mg-${id}`, margin != null ? `<span style="display:flex;align-items:center">${dot}<span class="mono" style="color:${mc}">${fmtPct(margin)}</span></span>` : `<span class="dim">—</span>`);
+}
+
+function renderTable() {
+  const body = document.getElementById('resourceBody');
+  body.innerHTML = '';
+  rows.forEach(r => {
+    const region = r.nfi ? 'India' : 'Americas';
+    const costResult = getCostRate(r.role, r.nfi, r.skill);
+    const costRate = costResult ? costResult.rate : null;
+    const isCombo = costResult ? costResult.source === 'combo' : false;
+    const rev = r.hours * getBillRate();
+    const cost = costRate != null ? r.hours * costRate : null;
+    const margin = (cost != null && rev > 0) ? ((rev - cost) / rev) * 100 : null;
+    const mc = marginColor(margin);
+    const dot = margin != null ? `<span class="row-margin-dot" style="background:${mc}"></span>` : '';
+    const regionCls = r.nfi ? 'badge-india' : 'badge-na';
+    const comboTag = isCombo ? ` <span style="font-size:9px;color:var(--accent);font-family:var(--mono)">role+skill</span>` : '';
+
+    const roleOpts = `<option value="">— Select Role —</option>` +
+      ROLES().map(role => `<option value="${role}"${r.role===role?' selected':''}>${role}</option>`).join('');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><select style="width:148px" onchange="updateRow(${r.id},'role',this.value)">${roleOpts}</select></td>
+      <td><input type="text" style="width:88px" value="${r.skill||''}" placeholder="e.g. Service Cloud" onchange="updateRow(${r.id},'skill',this.value)"></td>
+      <td class="nfi-cell">
+        <input type="checkbox" title="NFI = India cost rate" ${r.nfi?'checked':''}
+          onchange="updateRow(${r.id},'nfi',this.checked)">
+      </td>
+      <td class="td-p" id="rg-${r.id}"><span class="badge ${regionCls}">${region}</span></td>
+      <td><input type="number" style="width:75px" value="${r.hours||''}" min="0" placeholder="0"
+        oninput="updateRow(${r.id},'hours',this.value)"></td>
+      <td class="td-p" id="rv-${r.id}"><span class="mono">${fmt(rev)}</span></td>
+      <td class="td-p" id="co-${r.id}">${cost!=null?`<span class="mono">${fmt(cost)}</span>${comboTag}`:`<span class="dim">—</span>`}</td>
+      <td class="td-p" id="mg-${r.id}">
+        ${margin!=null?`<span style="display:flex;align-items:center">${dot}<span class="mono" style="color:${mc}">${fmtPct(margin)}</span></span>`:`<span class="dim">—</span>`}
+      </td>
+      <td class="td-p"><button class="del-btn" onclick="removeRow(${r.id})" title="Remove">×</button></td>
+    `;
+    body.appendChild(tr);
+  });
+  document.getElementById('rowCount').textContent = `${rows.length} resource${rows.length!==1?'s':''}`;
+}
+
+// ══════════════════════════════════════════════════════
+// RECALC
+// ══════════════════════════════════════════════════════
+function recalc() {
+  const rate = getBillRate();
+  const { val, type } = getDiscount();
+
+  let grossRev = 0, totalCost = 0, totalHours = 0;
+  let nfiHours = 0, naHours = 0, nfiCost = 0, naCost = 0;
+  const byRole = {};
+
+  rows.forEach(r => {
+    const costResult = getCostRate(r.role, r.nfi, r.skill);
+    const costRate = costResult ? costResult.rate : null;
+    const rev = r.hours * rate;
+    const cost = costRate != null ? r.hours * costRate : null;
+
+    totalHours += r.hours;
+    grossRev += rev;
+    if (cost != null) totalCost += cost;
+    if (r.nfi) { nfiHours += r.hours; if (cost!=null) nfiCost += cost; }
+    else       { naHours  += r.hours; if (cost!=null) naCost  += cost; }
+
+    const region = r.nfi ? 'India' : 'Americas';
+    const key = `${r.role||'(none)'}||${region}`;
+    if (!byRole[key]) byRole[key] = { role: r.role||'(unassigned)', region, hours: 0, rev: 0, cost: 0, hasCost: false };
+    byRole[key].hours += r.hours;
+    byRole[key].rev += rev;
+    if (cost != null) { byRole[key].cost += cost; byRole[key].hasCost = true; }
+  });
+
+  // Apply discount to total revenue
+  const discountAmt = calcDiscountAmt(grossRev);
+  const totalRev = grossRev - discountAmt;
+
+  // Discount preview
+  const preview = document.getElementById('discountPreview');
+  if (val > 0 && grossRev > 0) {
+    preview.textContent = `−${fmt(discountAmt)} off total · effective revenue: ${fmt(totalRev)}`;
+  } else if (val > 0) {
+    preview.textContent = type === 'pct' ? `${val}% off total project revenue` : `${fmt(val)} off total project revenue`;
+  } else {
+    preview.textContent = '';
+  }
+
+  const profit = totalRev - totalCost;
+  const margin = totalRev > 0 ? (profit / totalRev) * 100 : null;
+  const mc = marginColor(margin);
+  const cls = marginClass(margin);
+
+  // Summary metrics
+  const S = id => document.getElementById(id);
+  S('mRevenue').textContent = fmt(totalRev);
+  S('mHours').textContent = `${totalHours.toLocaleString()} hrs`;
+  S('mCost').textContent = fmt(totalCost);
+  S('mRoles').textContent = `${rows.length} resource${rows.length!==1?'s':''}`;
+
+  const profEl = S('mProfit');
+  profEl.textContent = fmt(profit);
+  profEl.style.color = profit > 0 ? 'var(--green)' : profit < 0 ? 'var(--red)' : 'var(--text)';
+  S('mProfitSub').textContent = margin != null ? `${fmtPct(margin)} margin` : '';
+
+  S('mMargin').textContent = margin != null ? fmtPct(margin) : '—';
+  S('mMargin').style.color = mc;
+  S('mMarginSub').textContent = `Target: ${TARGET_MARGIN}%`;
+
+  // Margin card highlight
+  const marginCardEl = S('marginCard');
+  marginCardEl.className = 'metric-card' + (cls ? ' ' + cls : '');
+
+  // Bar
+  const barPct = margin != null ? Math.min(Math.max(margin, 0), 50) / 50 * 100 : 0;
+  S('marginBar').style.width = barPct + '%';
+  S('marginBar').style.background = mc;
+  S('barLabel').textContent = margin != null ? fmtPct(margin) : '—';
+
+  // Target badge
+  const badge = S('targetBadge');
+  if (margin != null) {
+    badge.style.display = 'inline-flex';
+    badge.className = `target-badge ${cls}`;
+    const delta = margin - TARGET_MARGIN;
+    badge.textContent = delta >= 0
+      ? `+${delta.toFixed(1)}% above target`
+      : `${Math.abs(delta).toFixed(1)}% below target`;
+  } else {
+    badge.style.display = 'none';
+  }
+
+  // Notification banner
+  const notif = S('notifBanner');
+  if (margin != null && rows.length > 0) {
+    notif.className = `notif visible ${cls}`;
+    if (cls === 'on-target') notif.textContent = `✓ On target — ${fmtPct(margin)} margin (target ${TARGET_MARGIN}%)`;
+    else if (cls === 'warn') notif.textContent = `⚠ Below target — ${fmtPct(margin)} margin, ${Math.abs(margin - TARGET_MARGIN).toFixed(1)}% short of ${TARGET_MARGIN}%`;
+    else notif.textContent = `✗ Off target — ${fmtPct(margin)} margin, need ${Math.abs(margin - TARGET_MARGIN).toFixed(1)}% more to reach ${TARGET_MARGIN}%`;
+  } else {
+    notif.className = 'notif';
+  }
+
+  // NFI breakdown
+  S('nfiHours').textContent = nfiHours.toLocaleString();
+  S('naHours').textContent = naHours.toLocaleString();
+  S('nfiCost').textContent = fmt(nfiCost) + ' cost';
+  S('naCost').textContent = fmt(naCost) + ' cost';
+  const nfiPct = totalHours > 0 ? (nfiHours/totalHours*100).toFixed(1) : 0;
+  const naPct  = totalHours > 0 ? (naHours /totalHours*100).toFixed(1) : 0;
+  S('nfiMix').textContent = `NFI Mix: ${nfiPct}% · Americas Mix: ${naPct}%`;
+
+  // Role breakdown table
+  const bBody = S('breakdownBody');
+  bBody.innerHTML = '';
+  Object.values(byRole).sort((a,b) => b.rev - a.rev).forEach(item => {
+    const m = item.rev > 0 ? ((item.rev - item.cost) / item.rev * 100) : null;
+    const imc = marginColor(m);
+    const iCls = item.region === 'India' ? 'badge-india' : 'badge-na';
+    const dot = m != null ? `<span class="row-margin-dot" style="background:${imc}"></span>` : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-p" style="font-size:11px">${item.role}</td>
+      <td class="td-p"><span class="badge ${iCls}">${item.region}</span></td>
+      <td class="td-p mono">${item.hours}</td>
+      <td class="td-p mono">${fmt(item.rev)}</td>
+      <td class="td-p mono">${item.hasCost ? fmt(item.cost) : '<span class="dim">—</span>'}</td>
+      <td class="td-p"><span style="display:flex;align-items:center;gap:3px">${dot}<span class="mono" style="color:${imc}">${fmtPct(m)}</span></span></td>
+    `;
+    bBody.appendChild(tr);
+  });
+
+  // Cost summary table
+  const csBody = S('costSummaryBody');
+  csBody.innerHTML = '';
+  const costRows = [
+    { label: 'Americas Resource Cost', val: naCost },
+    { label: 'NFI (India) Resource Cost', val: nfiCost },
+  ];
+  if (discountAmt > 0) {
+    costRows.unshift({ label: `Gross Revenue (pre-discount)`, val: grossRev, isGross: true });
+    costRows.push({ label: `Discount (${val}${type==='pct'?'%':''} off)`, val: discountAmt, isDiscount: true });
+  }
+  costRows.forEach(item => {
+    const pctRev = totalRev > 0 ? (Math.abs(item.val) / (item.isGross ? item.val : totalRev) * 100) : null;
+    const color = item.isDiscount ? 'var(--amber)' : item.isGross ? 'var(--muted)' : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-p" style="font-size:11px;color:${color||'inherit'}">${item.label}</td>
+      <td class="td-p mono" style="text-align:right;color:${color||'inherit'}">${item.isDiscount ? '−' : ''}${fmt(Math.abs(item.val))}</td>
+      <td class="td-p mono dim" style="text-align:right">${!item.isGross && pctRev != null ? fmtPct(pctRev) : '—'}</td>
+    `;
+    csBody.appendChild(tr);
+  });
+
+  // Totals
+  const profitPct = totalRev > 0 ? (profit / totalRev * 100) : null;
+  S('costSummaryTotals').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px 14px;font-size:11px;font-family:var(--mono)">
+      <span style="color:var(--muted)">Total Revenue</span><span style="text-align:right;color:var(--accent)">${fmt(totalRev)}</span><span></span>
+      <span style="color:var(--muted)">Total Cost</span><span style="text-align:right">${fmt(totalCost)}</span><span style="color:var(--muted);text-align:right">${totalRev>0?fmtPct(totalCost/totalRev*100):'—'}</span>
+      <span style="color:var(--muted)">Gross Profit</span><span style="text-align:right;color:${mc}">${fmt(profit)}</span><span style="color:${mc};text-align:right;font-weight:700">${fmtPct(margin)}</span>
+    </div>
+    <div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:${margin!=null?`var(--${cls==='on-target'?'green':cls==='warn'?'amber':'red'}-bg, var(--surface))`:'var(--surface)'};border:1px solid ${margin!=null?mc:'var(--border)'};font-size:11px;font-family:var(--mono);color:${margin!=null?mc:'var(--muted)'}">
+      ${margin!=null ? `${cls==='on-target'?'✓':'cls'==='warn'?'⚠':'✗'} Margin ${fmtPct(margin)} vs ${TARGET_MARGIN}% target (${(margin-TARGET_MARGIN)>=0?'+':''}${(margin-TARGET_MARGIN).toFixed(1)}%)` : 'No data yet'}
+    </div>
+  `;
+
+  S('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+// ══════════════════════════════════════════════════════
+// RATE CARD (admin only)
+// ══════════════════════════════════════════════════════
+function buildRateCard() {
+  const list = document.getElementById('rateCardList');
+  list.innerHTML = '';
+
+  // Role-only rates
+  const roleHeader = document.createElement('div');
+  roleHeader.style.cssText = 'font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:6px;margin-top:2px';
+  roleHeader.textContent = 'Role Rates';
+  list.appendChild(roleHeader);
+
+  ROLES().forEach(role => {
+    const r = COST_RATES[role];
+    const isEM = role === 'Engagement Manager';
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);';
+    const note = isEM ? ' <span style="font-size:9px;color:var(--muted);font-style:italic">→ uses DO rate</span>' : '';
+    const chips = [
+      r.na != null ? `<span class="badge badge-na" style="font-size:9px">Americas: $${r.na}</span>` : '',
+      r.india != null ? `<span class="badge badge-india" style="font-size:9px">India: $${r.india}</span>` : '',
+    ].filter(Boolean).join('');
+    div.innerHTML = `<div style="flex:1;font-size:11px;padding-top:2px">${role}${note}</div><div style="display:flex;gap:4px;flex-wrap:wrap">${chips}</div>`;
+    list.appendChild(div);
+  });
+
+  // Role + Skill combo rates
+  const comboHeader = document.createElement('div');
+  comboHeader.style.cssText = 'font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-top:14px;margin-bottom:6px';
+  comboHeader.textContent = 'Role + Skill Combo Rates';
+  list.appendChild(comboHeader);
+
+  Object.entries(COMBO_RATES).forEach(([key, r]) => {
+    const [role, skill] = key.split('|');
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);';
+    const chips = [
+      r.na != null ? `<span class="badge badge-na" style="font-size:9px">Americas: $${r.na}</span>` : '',
+      r.india != null ? `<span class="badge badge-india" style="font-size:9px">India: $${r.india}</span>` : '',
+    ].filter(Boolean).join('');
+    div.innerHTML = `<div style="flex:1;font-size:11px;padding-top:2px">${role} <span style="color:var(--accent)">+</span> ${skill}</div><div style="display:flex;gap:4px;flex-wrap:wrap">${chips}</div>`;
+    list.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// ADMIN MODAL
+// ══════════════════════════════════════════════════════
+function openAdminModal() {
+  document.getElementById('adminAuthStep').style.display = 'block';
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('adminPassword').value = '';
+  document.getElementById('adminError').style.display = 'none';
+  document.getElementById('adminModal').classList.add('open');
+  setTimeout(() => document.getElementById('adminPassword').focus(), 150);
+}
+
+function closeAdminModal() {
+  document.getElementById('adminModal').classList.remove('open');
+}
+
+function checkAdminPassword() {
+  const pw = document.getElementById('adminPassword').value;
+  if (pw === ADMIN_PASSWORD) {
+    document.getElementById('adminAuthStep').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    buildRateCard();
+  } else {
+    document.getElementById('adminError').style.display = 'block';
+    document.getElementById('adminPassword').value = '';
+    document.getElementById('adminPassword').focus();
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// ROSTER UPLOAD (admin)
+// ══════════════════════════════════════════════════════
+function handleRosterDrop(e) {
+  e.preventDefault();
+  document.getElementById('rosterUploadZone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) handleRosterUpload(file);
+}
+
+function handleRosterUpload(file) {
+  const successEl = document.getElementById('rosterSuccess');
+  const errorEl = document.getElementById('rosterError');
+  successEl.style.display = 'none';
+  errorEl.style.display = 'none';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      // Find the right sheet
+      const sheetName = wb.SheetNames.find(s => s.toLowerCase().includes('pricing') || s.toLowerCase().includes('opportunity')) || wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+      // Parse: col 0=Name, col 3=Primary Role, col 20=NF Role, col 21=NF Skill, col 11=Country, col 18=LCR USD
+      // Row 0-1: metadata, Row 2: headers, Row 3+: data → slice(3)
+      const naRates = {}, indiaRates = {};
+      const naCombo = {}, indiaCombo = {};
+      data.slice(3).forEach(row => {
+        const primaryRole = row[3]?.toString().trim();
+        const nfRole  = row[20]?.toString().trim();
+        const nfSkill = row[21]?.toString().trim();
+        const country = row[11]?.toString().toUpperCase().trim();
+        const lcr = parseFloat(row[18]);
+        if (!primaryRole || !country || isNaN(lcr)) return;
+        if (['#N/A','N/A','NONE','PRIMARY ROLE'].includes(primaryRole.toUpperCase())) return;
+
+        const region = ['USA','CANADA'].includes(country) ? 'na' : country === 'INDIA' ? 'india' : null;
+        if (!region) return;
+
+        // Role-only fallback rates (use NF Role if available, else Primary Role)
+        const roleKey = (nfRole && !['#N/A','N/A','None','nan'].includes(nfRole)) ? nfRole : primaryRole;
+        if (!naRates[roleKey]) naRates[roleKey] = [];
+        if (!indiaRates[roleKey]) indiaRates[roleKey] = [];
+        if (region === 'na') naRates[roleKey].push(lcr);
+        else indiaRates[roleKey].push(lcr);
+
+        // Combo rates (NF Role + NF Skill)
+        if (nfRole && nfSkill && !['#N/A','N/A','None','nan'].includes(nfRole) && !['#N/A','N/A','None','nan'].includes(nfSkill)) {
+          const comboKey = `${nfRole}|${nfSkill}`;
+          if (!naCombo[comboKey]) naCombo[comboKey] = [];
+          if (!indiaCombo[comboKey]) indiaCombo[comboKey] = [];
+          if (region === 'na') naCombo[comboKey].push(lcr);
+          else indiaCombo[comboKey].push(lcr);
+        }
+      });
+
+      const avg = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length * 100)/100 : null;
+
+      // Update COST_RATES for known delivery roles
+      const DELIVERY = ['Business Architect','Change Management','Consultant','Delivery Owner','Designer','Developer','Project Manager','Quality Assurance','Solution Architect','Support Engineer','Technical Architect','Technical Delivery Owner'];
+      DELIVERY.forEach(role => {
+        COST_RATES[role] = {
+          na: avg(naRates[role]) ?? COST_RATES[role]?.na ?? null,
+          india: avg(indiaRates[role]) ?? COST_RATES[role]?.india ?? null,
+        };
+      });
+      COST_RATES['Engagement Manager'] = { na: COST_RATES['Delivery Owner'].na, india: COST_RATES['Delivery Owner'].india };
+
+      // Update COMBO_RATES from NF Role + Skill
+      const allComboKeys = new Set([...Object.keys(naCombo), ...Object.keys(indiaCombo)]);
+      allComboKeys.forEach(key => {
+        COMBO_RATES[key] = {
+          na: avg(naCombo[key] || []) ?? COMBO_RATES[key]?.na ?? null,
+          india: avg(indiaCombo[key] || []) ?? COMBO_RATES[key]?.india ?? null,
+        };
+      });
+
+      // Also build named-resource lookup from roster
+      ROSTER_BY_NAME = {};
+      data.slice(3).forEach(row => {
+        const name = row[0]?.toString().trim();
+        const primaryRole = row[3]?.toString().trim();
+        const nfRole  = row[20]?.toString().trim();
+        const nfSkill = row[21]?.toString().trim();
+        const country = row[11]?.toString().toUpperCase().trim();
+        const lcr = parseFloat(row[18]);
+        if (!name || name.toLowerCase() === 'name' || isNaN(lcr) || lcr <= 0) return;
+        if (['#N/A','N/A','NONE'].includes(name.toUpperCase())) return;
+        const nfi = country === 'INDIA';
+        const role = (nfRole && !['#N/A','N/A','None','nan'].includes(nfRole)) ? nfRole : (primaryRole || '');
+        const skill = (nfSkill && !['#N/A','N/A','None','nan'].includes(nfSkill)) ? nfSkill : '';
+        ROSTER_BY_NAME[name.toLowerCase().trim()] = { name: name.trim(), role, skill, nfi, lcr };
+      });
+
+      // Persist roster to localStorage for future sessions
+      try {
+        localStorage.setItem('marginModel_rosterNames', JSON.stringify(ROSTER_BY_NAME));
+        localStorage.setItem('marginModel_costRates', JSON.stringify(COST_RATES));
+        localStorage.setItem('marginModel_comboRates', JSON.stringify(COMBO_RATES));
+        localStorage.setItem('marginModel_rosterDate', new Date().toLocaleDateString());
+      } catch(e) { console.warn('localStorage unavailable', e); }
+
+      buildRateCard();
+      recalc();
+      successEl.style.display = 'block';
+    } catch(err) {
+      errorEl.style.display = 'block';
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ══════════════════════════════════════════════════════
+// RESOURCE PLAN UPLOAD
+// ══════════════════════════════════════════════════════
+let pendingWorkbook = null, selectedTab = null;
+
+const RESOURCE_PLAN_KEYWORDS = ['final','resource plan','resource','estimator','use this','estimate'];
+
+function openUploadModal() {
+  pendingWorkbook = null; selectedTab = null;
+  document.getElementById('uploadStep1').style.display = 'block';
+  document.getElementById('uploadStep2').style.display = 'none';
+  document.getElementById('uploadStep1Actions').style.display = 'flex';
+  document.getElementById('planFileInput').value = '';
+  document.getElementById('planError').style.display = 'none';
+  // Detect which tab is active to route upload correctly
+  const isStaffing = document.getElementById('pane-staffing').classList.contains('active');
+  document.querySelector('.modal-title').textContent = isStaffing ? 'Upload Resource Plan → Staffing' : 'Upload Resource Plan';
+  document.getElementById('uploadModal').classList.add('open');
+}
+
+function closeUploadModal() {
+  document.getElementById('uploadModal').classList.remove('open');
+}
+
+function handlePlanDrop(e) {
+  e.preventDefault();
+  document.getElementById('planUploadZone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) handlePlanFile(file);
+}
+
+function handlePlanFile(file) {
+  document.getElementById('planError').style.display = 'none';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      pendingWorkbook = wb;
+
+      // Try to auto-detect the right tab
+      const sheets = wb.SheetNames;
+
+      // Score each sheet name
+      const scored = sheets.map(name => {
+        const n = name.toLowerCase();
+        let score = 0;
+        if (n.includes('final')) score += 10;
+        if (n.includes('use this')) score += 9;
+        if (n.match(/rp_le/)) score += 8;
+        if (n === 'resource plan') score += 8;
+        else if (n.includes('resource plan')) score += 7;
+        if (n.includes('resource')) score += 5;
+        if (n.includes('estimat')) score += 4;
+        // Penalise non-resource tabs
+        if (['welcome','setup','scope','all epics','foundation','release','rate card','picklist','copy','prototype','z_','old_use','chiang','descoped'].some(x => n.includes(x))) score -= 20;
+        // Penalise "old" prefix tabs slightly but not fully
+        if (n.startsWith('old')) score -= 5;
+        return { name, score };
+      }).filter(s => s.score > 0).sort((a,b) => b.score - a.score);
+
+      if (scored.length === 1) {
+        const isStaffing = document.getElementById('pane-staffing').classList.contains('active');
+        parseResourcePlan(wb, scored[0].name, isStaffing);
+        closeUploadModal();
+      } else if (scored.length > 1) {
+        selectedTab = scored[0].name;
+        showTabPicker(scored.map(s => s.name));
+      } else {
+        // No good match — show all tabs
+        selectedTab = sheets[0];
+        showTabPicker(sheets);
+      }
+    } catch(err) {
+      document.getElementById('planError').style.display = 'block';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showTabPicker(tabNames) {
+  document.getElementById('uploadStep1').style.display = 'none';
+  document.getElementById('uploadStep1Actions').style.display = 'none';
+  document.getElementById('uploadStep2').style.display = 'block';
+  const list = document.getElementById('tabList');
+  list.innerHTML = '';
+  tabNames.forEach(name => {
+    const div = document.createElement('div');
+    div.className = 'tab-option' + (name === selectedTab ? ' selected' : '');
+    div.textContent = name;
+    div.onclick = () => {
+      selectedTab = name;
+      list.querySelectorAll('.tab-option').forEach(el => el.classList.remove('selected'));
+      div.classList.add('selected');
+      document.getElementById('tabConfirmBtn').disabled = false;
+    };
+    list.appendChild(div);
+  });
+  document.getElementById('tabConfirmBtn').disabled = !selectedTab;
+}
+
+function confirmTabSelection() {
+  if (!pendingWorkbook || !selectedTab) return;
+  const isStaffing = document.getElementById('pane-staffing').classList.contains('active');
+  parseResourcePlan(pendingWorkbook, selectedTab, isStaffing);
+  closeUploadModal();
+}
+
+function parseResourcePlan(wb, sheetName, forStaffing=false) {
+  const ws = wb.Sheets[sheetName];
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:H20');
+  const maxRow = range.e.r;
+  const maxCol = range.e.c;
+
+  const cell = (r, c) => {
+    const addr = XLSX.utils.encode_cell({ r, c });
+    const ct = ws[addr];
+    return ct ? ct.v : null;
+  };
+
+  // ── Detect column positions dynamically by header name ──
+  let headerRow = -1;
+  let cols = { role: -1, nfi: -1, skill: -1, hours: -1, nfRole: -1, nfSkill: -1 };
+
+  for (let r = 0; r < Math.min(maxRow + 1, 15); r++) {
+    const found = {};
+    for (let c = 0; c <= Math.min(maxCol, 30); c++) {
+      const v = cell(r, c);
+      if (!v) continue;
+      const s = String(v).toLowerCase().trim();
+      if (s === 'role') found.role = c;
+      if (s === 'nfi') found.nfi = c;
+      if (s === 'skill') found.skill = c;
+      if (s === 'hours') found.hours = c;
+      if (s === 'neuraflash role' || s === 'nf role') found.nfRole = c;
+      if (s === 'neuraflash skill' || s === 'nf skill') found.nfSkill = c;
+      if (s === 'resource' || s === 'resource name' || s === 'name') found.resource = c;
+    }
+    if (found.role !== undefined && found.hours !== undefined) {
+      headerRow = r;
+      cols = { role: found.role, nfi: found.nfi ?? -1, skill: found.skill ?? -1, hours: found.hours, nfRole: found.nfRole ?? -1, nfSkill: found.nfSkill ?? -1, resource: found.resource ?? -1 };
+      break;
+    }
+  }
+
+  if (headerRow === -1 || cols.role === -1) {
+    alert('Could not find resource plan header. Expected columns: Role, Hours.');
+    return;
+  }
+
+  // ── Pull bill rate — scan first 6 rows for "Rate" label then look right for a number ──
+  let billRateVal = null;
+  for (let r = 0; r < Math.min(maxRow + 1, 6); r++) {
+    for (let c = 0; c <= Math.min(maxCol, 10); c++) {
+      const v = cell(r, c);
+      if (v && String(v).toLowerCase().trim() === 'rate') {
+        for (let cc = c + 1; cc <= c + 6; cc++) {
+          const rv = parseFloat(cell(r, cc));
+          if (!isNaN(rv) && rv > 50 && rv < 2000) { billRateVal = rv; break; }
+        }
+      }
+      if (billRateVal) break;
+    }
+    if (billRateVal) break;
+  }
+
+  // ── Pull opportunity name from Welcome tab ──
+  let oppNameVal = null;
+  if (wb.SheetNames.includes('Welcome')) {
+    const wws = wb.Sheets['Welcome'];
+    const wRange = XLSX.utils.decode_range(wws['!ref'] || 'A1:B20');
+    let customer = null, product = null;
+    for (let r = 0; r <= wRange.e.r; r++) {
+      const keyCell = wws[XLSX.utils.encode_cell({ r, c: 0 })];
+      const valCell = wws[XLSX.utils.encode_cell({ r, c: 1 })];
+      if (!keyCell) continue;
+      const key = String(keyCell.v).toLowerCase().trim();
+      if (key === 'customer' && valCell) customer = String(valCell.v).trim();
+      if (key === 'product' && valCell) product = String(valCell.v).trim();
+    }
+    if (customer) oppNameVal = product ? `${customer} – ${product}` : customer;
+  }
+
+  // ── Parse resource rows ──
+  const newRows = [];
+  for (let r = headerRow + 1; r <= maxRow; r++) {
+    const roleRaw = cell(r, cols.role);
+    if (!roleRaw) continue;
+    const roleVal = String(roleRaw).trim();
+    if (!isNaN(parseFloat(roleVal)) && isFinite(roleVal)) continue;
+    if (roleVal === '' || roleVal.toLowerCase() === 'role') continue;
+    if (['totals','summary','nfi mix','pre-kickoff','discovery','design','sprints','test','deploy','support'].includes(roleVal.toLowerCase())) break;
+
+    const nfiRaw = cols.nfi !== -1 ? cell(r, cols.nfi) : false;
+    const nfi = nfiRaw === true || nfiRaw === 1 || String(nfiRaw).toLowerCase() === 'true';
+    const skillRaw = cols.skill !== -1 ? cell(r, cols.skill) : null;
+    const hours = parseFloat(cols.hours !== -1 ? cell(r, cols.hours) : 0) || 0;
+    if (hours === 0) continue;
+
+    const resourceName = cols.resource !== -1 ? (cell(r, cols.resource) ? String(cell(r, cols.resource)).trim() : '') : '';
+
+    const nfRoleRaw  = cols.nfRole  !== -1 ? cell(r, cols.nfRole)  : null;
+    const nfSkillRaw = cols.nfSkill !== -1 ? cell(r, cols.nfSkill) : null;
+    const nfRole  = (nfRoleRaw  && typeof nfRoleRaw  === 'string' && nfRoleRaw.trim()  !== '') ? nfRoleRaw.trim()  : null;
+    const nfSkill = (nfSkillRaw && typeof nfSkillRaw === 'string' && nfSkillRaw.trim() !== '') ? nfSkillRaw.trim() : null;
+
+    const finalRole  = nfRole  || roleVal;
+    const finalSkill = nfSkill || (skillRaw ? String(skillRaw).trim() : '');
+
+    const matchedRole = matchRole(finalRole);
+    const impliedSkill = extractImpliedSkill(finalRole);
+    const resolvedSkill = finalSkill || impliedSkill || '';
+
+    console.log(`Row ${r+1}: raw="${finalRole}" → matched="${matchedRole}" skill="${resolvedSkill}" nfi=${nfi} hours=${hours} rate=`, getCostRate(matchedRole || finalRole, nfi, resolvedSkill));
+    newRows.push({ role: matchedRole || finalRole, skill: resolvedSkill, nfi, hours, resourceName });
+  }
+
+  if (newRows.length === 0) {
+    alert('No resource rows found. Please check the tab selection.');
+    return;
+  }
+
+  if (forStaffing) {
+    if (oppNameVal) document.getElementById('s-oppName').value = oppNameVal;
+    if (billRateVal) document.getElementById('s-billRate').value = billRateVal;
+    document.getElementById('s-discountValue').value = 0;
+    sRows = [];
+    sRowId = 0;
+    newRows.forEach(r => sAddRow(r.resourceName || '', r.role, r.skill, r.nfi, r.hours));
+  } else {
+    if (oppNameVal) document.getElementById('oppName').value = oppNameVal;
+    if (billRateVal) document.getElementById('billRate').value = billRateVal;
+    document.getElementById('discountValue').value = 0;
+    rows = [];
+    rowId = 0;
+    newRows.forEach(r => addRow(r.role, r.skill, r.nfi, r.hours));
+  }
+}
+
+function matchRole(raw) {
+  const r = raw.toLowerCase().trim();
+  const known = ROLES();
+  // Exact match first
+  const exact = known.find(k => k.toLowerCase() === r);
+  if (exact) return exact;
+  // Contains match — raw contains a known role name
+  const contains = known.find(k => r.includes(k.toLowerCase()));
+  if (contains) return contains;
+  // Reverse contains — known role contains raw (e.g. raw='architect', known='Solution Architect')
+  const reverse = known.find(k => k.toLowerCase().includes(r));
+  if (reverse) return reverse;
+  return null;
+}
+
+// Extract implied skill from compound role names like "AWS Developer", "MuleSoft Developer"
+function extractImpliedSkill(raw) {
+  const r = raw.toLowerCase().trim();
+  const skillKeywords = ['aws', 'mulesoft', 'mule soft'];
+  for (const kw of skillKeywords) {
+    if (r.includes(kw)) return kw.charAt(0).toUpperCase() + kw.slice(1).replace(' soft', 'Soft');
+  }
+  return null;
+}
+
+// ══════════════════════════════════════════════════════
+// STAFFING TAB
+// ══════════════════════════════════════════════════════
+let sRows = [], sRowId = 0;
+const getSBillRate = () => parseFloat(document.getElementById('s-billRate').value) || 0;
+
+function lookupResource(name) {
+  if (!name) return null;
+  const key = name.toLowerCase().trim();
+  if (!key) return null;
+  // Exact match
+  if (ROSTER_BY_NAME[key]) return ROSTER_BY_NAME[key];
+  const keys = Object.keys(ROSTER_BY_NAME);
+  // Roster key contains search key (handles trailing spaces etc)
+  const contains = keys.find(k => k.includes(key));
+  if (contains) return ROSTER_BY_NAME[contains];
+  // Search key contains roster key
+  const reverse = keys.find(k => key.includes(k) && k.length > 3);
+  if (reverse) return ROSTER_BY_NAME[reverse];
+  // First-name-only match (e.g. "Manoj" -> "Manoj Kumar Suresh")
+  if (!key.includes(' ')) {
+    const firstNameMatch = keys.find(k => k.split(' ')[0] === key);
+    if (firstNameMatch) return ROSTER_BY_NAME[firstNameMatch];
+  }
+  return null;
+}
+
+function sAddRow(resourceName='', role='', skill='', nfi=false, hours=0, manualLcr=null) {
+  const found = lookupResource(resourceName);
+  const resolvedRole  = found ? found.role  : role;
+  const resolvedSkill = found ? found.skill : skill;
+  const resolvedNfi   = found ? found.nfi   : nfi;
+
+  let lcrStatus, lcr;
+  if (found) {
+    lcrStatus = 'exact';
+    lcr = found.lcr;
+  } else if (manualLcr != null) {
+    lcrStatus = 'manual';
+    lcr = manualLcr;
+  } else {
+    // Auto-default: try combo avg, then role avg, then error
+    const avgResult = getCostRate(resolvedRole, resolvedNfi, resolvedSkill);
+    const roleOnlyResult = getCostRate(resolvedRole, resolvedNfi, '');
+    if (avgResult) {
+      lcrStatus = resourceName ? 'avg_notfound' : 'avg'; // avg_notfound = person not in roster
+      lcr = null; // will be derived live from getCostRate
+    } else if (roleOnlyResult) {
+      lcrStatus = resourceName ? 'avg_notfound' : 'avg_role';
+      lcr = null;
+    } else {
+      lcrStatus = 'error';
+      lcr = null;
+    }
+  }
+
+  sRows.push({ id: sRowId++, resourceName, role: resolvedRole, skill: resolvedSkill, nfi: resolvedNfi, hours, lcr, lcrStatus });
+  sRenderTable();
+  sRecalc();
+}
+
+function sRemoveRow(id) {
+  sRows = sRows.filter(r => r.id !== id);
+  sRenderTable();
+  sRecalc();
+}
+
+function sUpdateRow(id, field, value) {
+  const r = sRows.find(r => r.id === id);
+  if (!r) return;
+  if (field === 'hours') r.hours = parseFloat(value) || 0;
+  else if (field === 'nfi') r.nfi = value;
+  else if (field === 'role') r.role = value;
+  else if (field === 'skill') r.skill = value;
+  else if (field === 'manualLcr') { r.lcr = parseFloat(value) || null; r.lcrStatus = 'manual'; }
+  else if (field === 'useAvg') { r.lcr = null; r.lcrStatus = 'avg'; }
+  else if (field === 'resourceName') {
+    r.resourceName = value;
+    const found = lookupResource(value);
+    if (found) {
+      r.lcr = found.lcr; r.lcrStatus = 'exact';
+      r.role = found.role; r.skill = found.skill; r.nfi = found.nfi;
+    } else {
+      // Auto-default to avg
+      const avgResult = getCostRate(r.role, r.nfi, r.skill);
+      r.lcr = null;
+      r.lcrStatus = value ? 'avg_notfound' : 'avg';
+      if (!avgResult) {
+        const roleOnly = getCostRate(r.role, r.nfi, '');
+        r.lcrStatus = roleOnly ? (value ? 'avg_notfound' : 'avg_role') : 'error';
+      }
+    }
+  }
+  sRenderTable();
+  sRecalc();
+}
+
+function sGetEffectiveLcr(r) {
+  if (r.lcrStatus === 'exact' || r.lcrStatus === 'manual') return r.lcr;
+  if (r.lcrStatus === 'error') return null;
+  // avg / avg_notfound: try combo first, then role-only fallback
+  const comboResult = getCostRate(r.role, r.nfi, r.skill);
+  if (comboResult) return comboResult.rate;
+  const roleResult = getCostRate(r.role, r.nfi, '');
+  return roleResult ? roleResult.rate : null;
+}
+
+function sRenderTable() {
+  const body = document.getElementById('s-resourceBody');
+  body.innerHTML = '';
+  sRows.forEach(r => {
+    const effectiveLcr = sGetEffectiveLcr(r);
+    const rev = r.hours * getSBillRate();
+    const cost = effectiveLcr != null ? r.hours * effectiveLcr : null;
+    const margin = (cost != null && rev > 0) ? ((rev - cost) / rev) * 100 : null;
+    const mc = marginColor(margin);
+    const regionCls = r.nfi ? 'badge-india' : 'badge-na';
+    const region = r.nfi ? 'India' : 'Americas';
+
+    // LCR display
+    let lcrDisplay = '';
+    let lcrNote = '';
+    if (r.lcrStatus === 'exact') {
+      lcrDisplay = `<span class="mono" style="color:var(--green)">$${r.lcr?.toFixed(2)}</span>`;
+      lcrNote = `<div class="name-found">✓ roster match</div>`;
+    } else if (r.lcrStatus === 'manual') {
+      lcrDisplay = `<input type="number" style="width:70px;font-size:11px" value="${r.lcr||''}" placeholder="$/hr" oninput="sUpdateRow(${r.id},'manualLcr',this.value)">`;
+      lcrNote = `<div class="name-notfound" style="font-size:8px">✎ manual rate</div>`;
+    } else if (r.lcrStatus === 'avg') {
+      lcrDisplay = effectiveLcr != null ? `<span class="mono" style="color:var(--amber)">$${effectiveLcr?.toFixed(2)}</span>` : '<span class="dim">—</span>';
+      lcrNote = `<div class="name-notfound">~avg rate</div>`;
+    } else if (r.lcrStatus === 'avg_notfound') {
+      // Person not in roster — defaulted to avg, show note + option to enter manual
+      lcrDisplay = effectiveLcr != null
+        ? `<div style="display:flex;flex-direction:column;gap:2px">
+            <span class="mono" style="color:var(--amber)">$${effectiveLcr?.toFixed(2)}</span>
+            <button onclick="sPromptManualLcr(${r.id})" style="font-size:8px;padding:1px 5px;background:transparent;color:var(--muted);border:1px solid var(--border2);border-radius:3px;cursor:pointer">enter exact</button>
+           </div>`
+        : '<span class="dim">—</span>';
+      lcrNote = `<div class="name-notfound">not in roster · ~avg</div>`;
+    } else if (r.lcrStatus === 'avg_role') {
+      // No combo match — fell back to role-only avg
+      lcrDisplay = effectiveLcr != null
+        ? `<div style="display:flex;flex-direction:column;gap:2px">
+            <span class="mono" style="color:var(--amber)">$${effectiveLcr?.toFixed(2)}</span>
+            <button onclick="sPromptManualLcr(${r.id})" style="font-size:8px;padding:1px 5px;background:transparent;color:var(--muted);border:1px solid var(--border2);border-radius:3px;cursor:pointer">enter exact</button>
+           </div>`
+        : '<span class="dim">—</span>';
+      lcrNote = `<div class="name-notfound">~role avg (no skill match)</div>`;
+    } else {
+      // error — no rate found at all, must enter manually
+      lcrDisplay = `<input type="number" style="width:70px;font-size:11px;border-color:var(--red)" value="${r.lcr||''}" placeholder="$/hr required"
+        oninput="sUpdateRow(${r.id},'manualLcr',this.value)">`;
+      lcrNote = `<div style="color:var(--red);font-size:8px;font-family:var(--mono)">⚠ no rate found — enter manually</div>`;
+    }
+
+    const roleOpts = `<option value="">— Role —</option>` +
+      ROLES().map(role => `<option value="${role}"${r.role===role?' selected':''}>${role}</option>`).join('');
+    const dot = margin != null ? `<span class="row-margin-dot" style="background:${mc}"></span>` : '';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="min-width:130px">
+        <input type="text" style="width:128px;font-size:11px" value="${r.resourceName||''}" placeholder="Person name"
+          onchange="sUpdateRow(${r.id},'resourceName',this.value)">
+        ${lcrNote}
+      </td>
+      <td><select style="width:130px;font-size:11px" onchange="sUpdateRow(${r.id},'role',this.value)">${roleOpts}</select></td>
+      <td><input type="text" style="width:78px;font-size:11px" value="${r.skill||''}" placeholder="Skill"
+        onchange="sUpdateRow(${r.id},'skill',this.value)"></td>
+      <td class="nfi-cell"><input type="checkbox" ${r.nfi?'checked':''} onchange="sUpdateRow(${r.id},'nfi',this.checked)"></td>
+      <td class="td-p"><span class="badge ${regionCls}">${region}</span></td>
+      <td><input type="number" style="width:65px;font-size:11px" value="${r.hours||''}" min="0" placeholder="0"
+        oninput="sUpdateRow(${r.id},'hours',this.value)"></td>
+      <td class="td-p" style="min-width:90px">${lcrDisplay}</td>
+      <td class="td-p"><span class="mono">${fmt(rev)}</span></td>
+      <td class="td-p">${cost!=null?`<span class="mono">${fmt(cost)}</span>`:'<span class="dim">—</span>'}</td>
+      <td class="td-p">${margin!=null?`<span style="display:flex;align-items:center">${dot}<span class="mono" style="color:${mc}">${fmtPct(margin)}</span></span>`:'<span class="dim">—</span>'}</td>
+      <td class="td-p"><button class="del-btn" onclick="sRemoveRow(${r.id})" title="Remove">×</button></td>
+    `;
+    body.appendChild(tr);
+  });
+  document.getElementById('s-rowCount').textContent = `${sRows.length} resource${sRows.length!==1?'s':''}`;
+}
+
+function sPromptManualLcr(id) {
+  const r = sRows.find(r => r.id === id);
+  if (!r) return;
+  r.lcrStatus = 'manual';
+  r.lcr = null;
+  sRenderTable();
+  sRecalc();
+}
+
+function sRecalc() {
+  const rate = getSBillRate();
+  const discVal = parseFloat(document.getElementById('s-discountValue').value) || 0;
+  const discType = document.getElementById('s-discountType').value;
+
+  let grossRev = 0, totalCost = 0, totalHours = 0;
+  let nfiHours = 0, naHours = 0, nfiCost = 0, naCost = 0;
+  const byResource = {};
+
+  sRows.forEach(r => {
+    const lcr = sGetEffectiveLcr(r);
+    const rev = r.hours * rate;
+    const cost = lcr != null ? r.hours * lcr : null;
+    totalHours += r.hours;
+    grossRev += rev;
+    if (cost != null) totalCost += cost;
+    if (r.nfi) { nfiHours += r.hours; if (cost!=null) nfiCost += cost; }
+    else        { naHours  += r.hours; if (cost!=null) naCost  += cost; }
+
+    const label = r.resourceName || r.role || '(unnamed)';
+    if (!byResource[label]) byResource[label] = { name: label, role: r.role||'', nfi: r.nfi, hours: 0, rev: 0, cost: 0, hasCost: false };
+    byResource[label].hours += r.hours;
+    byResource[label].rev += rev;
+    if (cost != null) { byResource[label].cost += cost; byResource[label].hasCost = true; }
+  });
+
+  const discAmt = discType === 'pct' ? grossRev * Math.min(discVal,100)/100 : Math.min(discVal, grossRev);
+  const totalRev = grossRev - discAmt;
+  const profit = totalRev - totalCost;
+  const margin = totalRev > 0 ? (profit / totalRev) * 100 : null;
+  const mc = marginColor(margin);
+  const cls = marginClass(margin);
+
+  const S = id => document.getElementById(id);
+
+  // Discount preview
+  const prev = S('s-discountPreview');
+  if (discVal > 0 && grossRev > 0) prev.textContent = `−${fmt(discAmt)} off total · effective: ${fmt(totalRev)}`;
+  else prev.textContent = '';
+
+  S('s-mRevenue').textContent = fmt(totalRev);
+  S('s-mHours').textContent = `${totalHours.toLocaleString()} hrs`;
+  S('s-mCost').textContent = fmt(totalCost);
+  S('s-mRoles').textContent = `${sRows.length} resource${sRows.length!==1?'s':''}`;
+
+  const profEl = S('s-mProfit');
+  profEl.textContent = fmt(profit);
+  profEl.style.color = profit > 0 ? 'var(--green)' : profit < 0 ? 'var(--red)' : 'var(--text)';
+  S('s-mProfitSub').textContent = margin != null ? `${fmtPct(margin)} margin` : '';
+
+  S('s-mMargin').textContent = margin != null ? fmtPct(margin) : '—';
+  S('s-mMargin').style.color = mc;
+
+  S('s-marginCard').className = 'metric-card' + (cls ? ' ' + cls : '');
+
+  const barPct = margin != null ? Math.min(Math.max(margin,0),50)/50*100 : 0;
+  S('s-marginBar').style.width = barPct + '%';
+  S('s-marginBar').style.background = mc;
+  S('s-barLabel').textContent = margin != null ? fmtPct(margin) : '—';
+
+  const badge = S('s-targetBadge');
+  if (margin != null) {
+    badge.style.display = 'inline-flex';
+    badge.className = `target-badge ${cls}`;
+    const delta = margin - TARGET_MARGIN;
+    badge.textContent = delta >= 0 ? `+${delta.toFixed(1)}% above target` : `${Math.abs(delta).toFixed(1)}% below target`;
+  } else { badge.style.display = 'none'; }
+
+  const notif = S('s-notifBanner');
+  if (margin != null && sRows.length > 0) {
+    notif.className = `notif visible ${cls}`;
+    if (cls === 'on-target') notif.textContent = `✓ On target — ${fmtPct(margin)} margin (target ${TARGET_MARGIN}%)`;
+    else if (cls === 'warn') notif.textContent = `⚠ Below target — ${fmtPct(margin)} margin, ${Math.abs(margin - TARGET_MARGIN).toFixed(1)}% short`;
+    else notif.textContent = `✗ Off target — ${fmtPct(margin)} margin, need ${Math.abs(margin - TARGET_MARGIN).toFixed(1)}% more`;
+  } else { notif.className = 'notif'; }
+
+  S('s-nfiHours').textContent = nfiHours.toLocaleString();
+  S('s-naHours').textContent = naHours.toLocaleString();
+  S('s-nfiCost').textContent = fmt(nfiCost) + ' cost';
+  S('s-naCost').textContent = fmt(naCost) + ' cost';
+  const nfiPct = totalHours > 0 ? (nfiHours/totalHours*100).toFixed(1) : 0;
+  const naPct  = totalHours > 0 ? (naHours/totalHours*100).toFixed(1) : 0;
+  S('s-nfiMix').textContent = `NFI Mix: ${nfiPct}% · Americas Mix: ${naPct}%`;
+
+  // Resource breakdown table
+  const bBody = S('s-breakdownBody');
+  bBody.innerHTML = '';
+  Object.values(byResource).sort((a,b) => b.rev - a.rev).forEach(item => {
+    const m = item.rev > 0 ? ((item.rev - item.cost) / item.rev * 100) : null;
+    const imc = marginColor(m);
+    const iCls = item.nfi ? 'badge-india' : 'badge-na';
+    const dot = m != null ? `<span class="row-margin-dot" style="background:${imc}"></span>` : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-p" style="font-size:11px">${item.name}</td>
+      <td class="td-p" style="font-size:11px">${item.role}</td>
+      <td class="td-p"><span class="badge ${iCls}">${item.nfi?'India':'Americas'}</span></td>
+      <td class="td-p mono">${item.hours}</td>
+      <td class="td-p mono">${fmt(item.rev)}</td>
+      <td class="td-p mono">${item.hasCost ? fmt(item.cost) : '<span class="dim">—</span>'}</td>
+      <td class="td-p"><span style="display:flex;align-items:center;gap:3px">${dot}<span class="mono" style="color:${imc}">${fmtPct(m)}</span></span></td>
+    `;
+    bBody.appendChild(tr);
+  });
+
+  // Cost summary
+  const csBody = S('s-costSummaryBody');
+  csBody.innerHTML = '';
+  const costRows = [
+    { label: 'Americas Resource Cost', val: naCost },
+    { label: 'NFI (India) Resource Cost', val: nfiCost },
+  ];
+  if (discAmt > 0) {
+    costRows.unshift({ label: 'Gross Revenue (pre-discount)', val: grossRev, isGross: true });
+    costRows.push({ label: `Discount (${discVal}${discType==='pct'?'%':''} off)`, val: discAmt, isDiscount: true });
+  }
+  costRows.forEach(item => {
+    const pctRev = totalRev > 0 ? (Math.abs(item.val) / (item.isGross ? item.val : totalRev) * 100) : null;
+    const color = item.isDiscount ? 'var(--amber)' : item.isGross ? 'var(--muted)' : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-p" style="font-size:11px;color:${color||'inherit'}">${item.label}</td>
+      <td class="td-p mono" style="text-align:right;color:${color||'inherit'}">${item.isDiscount?'−':''}${fmt(Math.abs(item.val))}</td>
+      <td class="td-p mono dim" style="text-align:right">${!item.isGross && pctRev!=null ? fmtPct(pctRev) : '—'}</td>
+    `;
+    csBody.appendChild(tr);
+  });
+
+  const profitPct = totalRev > 0 ? (profit / totalRev * 100) : null;
+  S('s-costSummaryTotals').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px 14px;font-size:11px;font-family:var(--mono)">
+      <span style="color:var(--muted)">Total Revenue</span><span style="text-align:right;color:var(--accent)">${fmt(totalRev)}</span><span></span>
+      <span style="color:var(--muted)">Total Cost</span><span style="text-align:right">${fmt(totalCost)}</span><span style="color:var(--muted);text-align:right">${totalRev>0?fmtPct(totalCost/totalRev*100):'—'}</span>
+      <span style="color:var(--muted)">Gross Profit</span><span style="text-align:right;color:${mc}">${fmt(profit)}</span><span style="color:${mc};text-align:right;font-weight:700">${fmtPct(margin)}</span>
+    </div>
+    <div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:${margin!=null?`var(--${cls==='on-target'?'green':cls==='warn'?'amber':'red'}-bg, var(--surface))`:'var(--surface)'};border:1px solid ${margin!=null?mc:'var(--border)'};font-size:11px;font-family:var(--mono);color:${margin!=null?mc:'var(--muted)'}">
+      ${margin!=null ? `${cls==='on-target'?'✓':cls==='warn'?'⚠':'✗'} Margin ${fmtPct(margin)} vs ${TARGET_MARGIN}% target (${(margin-TARGET_MARGIN)>=0?'+':''}${(margin-TARGET_MARGIN).toFixed(1)}%)` : 'No data yet — upload roster via Admin to enable name lookups'}
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+// Close modals on overlay click
+document.getElementById('adminModal').addEventListener('click', function(e) { if (e.target === this) closeAdminModal(); });
+document.getElementById('uploadModal').addEventListener('click', function(e) { if (e.target === this) closeUploadModal(); });
+
+function clearSavedRoster() {
+  if (!confirm('Clear saved roster data? You will need to re-upload next session.')) return;
+  try {
+    localStorage.removeItem('marginModel_rosterNames');
+    localStorage.removeItem('marginModel_costRates');
+    localStorage.removeItem('marginModel_comboRates');
+    localStorage.removeItem('marginModel_rosterDate');
+    ROSTER_BY_NAME = {};
+    alert('Saved roster cleared.');
+  } catch(e) { console.warn(e); }
+}
+
+// Restore persisted roster from localStorage if available
+try {
+  const savedNames = localStorage.getItem('marginModel_rosterNames');
+  const savedCost  = localStorage.getItem('marginModel_costRates');
+  const savedCombo = localStorage.getItem('marginModel_comboRates');
+  const savedDate  = localStorage.getItem('marginModel_rosterDate');
+  if (savedNames) {
+    ROSTER_BY_NAME = JSON.parse(savedNames);
+    if (savedCost)  COST_RATES  = JSON.parse(savedCost);
+    if (savedCombo) COMBO_RATES = JSON.parse(savedCombo);
+    const count = Object.keys(ROSTER_BY_NAME).length;
+    // Show a subtle indicator in admin zone
+    const rosterZone = document.getElementById('rosterUploadZone');
+    if (rosterZone && count > 0) {
+      rosterZone.querySelector('div:last-child').textContent =
+        `Roster loaded: ${count} resources (${savedDate || 'saved'}) — upload to refresh`;
+    }
+    console.log(`Restored roster: ${count} named resources from ${savedDate}`);
+  }
+} catch(e) { console.warn('Could not restore roster from localStorage', e); }
+
+// Start with empty resource plan
+recalc();
+</script>
+</body>
+</html>
